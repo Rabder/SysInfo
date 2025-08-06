@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>System Info Agent</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        
+        .container {
+            max-width: 450px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-weight: 300;
+            font-size: 24px;
+        }
+        
+        .input-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        #queryInput {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        #queryInput:focus {
+            border-color: #667eea;
+        }
+        
+        #submitBtn {
+            padding: 12px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        
+        #submitBtn:hover {
+            background: #5a6fd8;
+        }
+        
+        #submitBtn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        #result {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            min-height: 100px;
+            border: 1px solid #e9ecef;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .answer {
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        
+        .details {
+            margin-top: 15px;
+            border-left: 3px solid #667eea;
+            padding-left: 10px;
+        }
+        
+        .details-title {
+            color: #667eea;
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 5px;
+            user-select: none;
+        }
+        
+        .details-title:hover {
+            text-decoration: underline;
+        }
+        
+        .details-content {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #666;
+            background: #f5f5f5;
+            padding: 8px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            display: none;
+        }
+        
+        .details-content.show {
+            display: block;
+        }
+        
+        .loading {
+            color: #667eea;
+            font-style: italic;
+        }
+        
+        .examples {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .examples strong {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 System Info Agent</h1>
+        
+        <div class="input-container">
+            <input type="text" id="queryInput" placeholder="Ask about your system... (e.g., cores, ram, disk space)" />
+            <button id="submitBtn">Ask</button>
+        </div>
+        
+        <div id="result">Initializing AI system... Please wait.</div>
+        
+        <div class="examples">
+            <strong>Try asking:</strong> cores, ram, memory, cpu usage, disk space, storage
+        </div>
+    </div>
+
+    <script>
+        const queryInput = document.getElementById('queryInput');
+        const submitBtn = document.getElementById('submitBtn');
+        const result = document.getElementById('result');
+
+        async function handleQuery() {
+            const query = queryInput.value.trim();
+            if (!query) return;
+
+            submitBtn.disabled = true;
+            result.innerHTML = 'Thinking...';
+            result.className = 'loading';
+
+            try {
+                const response = await window.electronAPI.querySystem(query);
+                
+                let html = `<div class="answer">${response.interpretation}</div>`;
+                
+                if (response.command || response.rawOutput) {
+                    html += `
+                        <div class="details">
+                            <div class="details-title" onclick="toggleDetails(this)">▼ Show technical details</div>
+                            <div class="details-content">
+                                ${response.command ? `<strong>Command used:</strong><div>${response.command}</div><br>` : ''}
+                                ${response.rawOutput ? `<strong>Raw output:</strong><div>${response.rawOutput}</div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                result.innerHTML = html;
+                result.className = '';
+                
+            } catch (error) {
+                result.innerHTML = `Error: ${error.message}`;
+                result.className = '';
+            }
+
+            submitBtn.disabled = false;
+            queryInput.select();
+        }
+
+        function toggleDetails(element) {
+            const content = element.nextElementSibling;
+            content.classList.toggle('show');
+            element.textContent = content.classList.contains('show') 
+                ? '▲ Hide technical details' 
+                : '▼ Show technical details';
+        }
+
+        submitBtn.addEventListener('click', handleQuery);
+        
+        queryInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleQuery();
+            }
+        });
+
+        queryInput.focus();
+
+        window.electronAPI.onInitializationStatus((event, status) => {
+            result.textContent = status;
+            result.className = status.includes('Ready') ? '' : 'loading';
+        });
+    </script>
+</body>
+</html>
