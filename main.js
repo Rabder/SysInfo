@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { app, BrowserWindow, ipcMain } = require('electron');
 const { execSync } = require('child_process');
 const path = require('path');

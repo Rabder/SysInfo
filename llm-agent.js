@@ -1,15 +1,15 @@
-const axios = require('axios');
-const { execSync, spawn } = require('child_process');
+const Groq = require('groq-sdk');
+const { execSync } = require('child_process');
 const si = require('systeminformation');
 const path = require('path');
 const fs = require('fs');
 
 class SystemAgent {
   constructor() {
-    this.ollamaUrl = 'http://localhost:11434';
-    this.model = 'gemma2:2b';
-    this.ollamaProcess = null;
+    this.groq = null;
+    this.model = 'llama3-8b-8192'; // Fast Groq model
     this.isInitialized = false;
+    this.apiKey = process.env.GROQ_API_KEY || null;
     
     this.fallbackMethods = {
       'cores': () => require('os').cpus().length,
@@ -111,20 +111,22 @@ class SystemAgent {
   async initialize() {
     if (this.isInitialized) return true;
     
-    console.log('🚀 Initializing System Agent...');
+    console.log('🚀 Initializing System Agent with Groq...');
     
     try {
-      // Check if Ollama is installed
-      await this.ensureOllamaInstalled();
+      if (!this.apiKey) {
+        throw new Error('GROQ_API_KEY environment variable is required. Get your free API key from https://console.groq.com/');
+      }
       
-      // Start Ollama service
-      await this.startOllamaService();
+      this.groq = new Groq({
+        apiKey: this.apiKey
+      });
       
-      // Ensure model is available
-      await this.ensureModelAvailable();
+      // Test the connection with a simple request
+      await this.testGroqConnection();
       
       this.isInitialized = true;
-      console.log('✅ System Agent initialized successfully!');
+      console.log('✅ System Agent initialized successfully with Groq!');
       return true;
       
     } catch (error) {
@@ -133,100 +135,22 @@ class SystemAgent {
     }
   }
 
-  async ensureOllamaInstalled() {
+  async testGroqConnection() {
     try {
-      execSync('ollama --version', { stdio: 'ignore' });
-      console.log('✅ Ollama is installed');
-    } catch (error) {
-      console.log('📥 Ollama not found, attempting to install...');
-      throw new Error('Ollama not installed. Please install Ollama first from https://ollama.ai');
-    }
-  }
-
-  async startOllamaService() {
-    try {
-      // Check if already running
-      await axios.get(`${this.ollamaUrl}/api/tags`, { timeout: 2000 });
-      console.log('✅ Ollama service is already running');
-      return;
-    } catch (error) {
-      // Not running, start it
-      console.log('🔄 Starting Ollama service...');
-      
-      this.ollamaProcess = spawn('ollama', ['serve'], {
-        detached: true,
-        stdio: 'ignore'
+      const chatCompletion = await this.groq.chat.completions.create({
+        messages: [{ role: 'user', content: 'Hello' }],
+        model: this.model,
+        max_tokens: 5
       });
-      
-      // Wait for service to be ready
-      for (let i = 0; i < 30; i++) {
-        try {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          await axios.get(`${this.ollamaUrl}/api/tags`, { timeout: 2000 });
-          console.log('✅ Ollama service started successfully');
-          return;
-        } catch (err) {
-          // Still starting up
-        }
-      }
-      
-      throw new Error('Ollama service failed to start within 30 seconds');
-    }
-  }
-
-  async ensureModelAvailable() {
-    try {
-      const response = await axios.get(`${this.ollamaUrl}/api/tags`);
-      const models = response.data.models || [];
-      
-      const modelExists = models.some(model => 
-        model.name === this.model || 
-        model.name === 'gemma2:2b' || 
-        model.name === 'gemma2' ||
-        model.name === 'gemma3'
-      );
-      
-      if (modelExists) {
-        console.log('✅ Model is available');
-        return;
-      }
-      
-      console.log(`📥 Downloading model ${this.model}... This may take a few minutes.`);
-      
-      return new Promise((resolve, reject) => {
-        const pullProcess = spawn('ollama', ['pull', this.model], {
-          stdio: ['ignore', 'pipe', 'pipe']
-        });
-        
-        pullProcess.stdout.on('data', (data) => {
-          console.log(`📥 ${data.toString().trim()}`);
-        });
-        
-        pullProcess.on('close', (code) => {
-          if (code === 0) {
-            console.log('✅ Model downloaded successfully');
-            resolve();
-          } else {
-            reject(new Error(`Failed to download model. Exit code: ${code}`));
-          }
-        });
-        
-        setTimeout(() => {
-          pullProcess.kill();
-          reject(new Error('Model download timeout (10 minutes)'));
-        }, 600000);
-      });
-      
+      console.log('✅ Groq API connection successful');
     } catch (error) {
-      throw new Error(`Failed to setup model: ${error.message}`);
+      throw new Error('Failed to connect to Groq API: ' + error.message);
     }
   }
 
   async cleanup() {
-    if (this.ollamaProcess) {
-      console.log('🧹 Cleaning up Ollama process...');
-      this.ollamaProcess.kill();
-    }
+    // No cleanup needed for Groq API
+    console.log('🧹 Cleaning up System Agent...');
   }
 
 async queryLLM(userQuery, previousError = null, failedCommand = null) {
@@ -247,23 +171,23 @@ async queryLLM(userQuery, previousError = null, failedCommand = null) {
     systemPrompt += `\n\nPrevious attempt failed with error: ${previousError}\nPrevious command: ${failedCommand}\nPlease generate a better command that avoids this error.`;
   }
 
-  systemPrompt += `\n\nNow answer: "${userQuery}"`;
+  const userMessage = `Now answer: "${userQuery}"`;
 
   try {
-    const response = await axios.post(`${this.ollamaUrl}/api/generate`, {
+    const chatCompletion = await this.groq.chat.completions.create({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage }
+      ],
       model: this.model,
-      prompt: systemPrompt,
-      stream: false,
-      options: {
-        temperature: previousError ? 0.3 : 0.1,
-        top_p: 0.9,
-        max_tokens: 300
-      }
+      temperature: previousError ? 0.3 : 0.1,
+      max_tokens: 300,
+      top_p: 0.9
     });
 
-    return response.data.response.trim();
+    return chatCompletion.choices[0]?.message?.content?.trim() || 'NO_COMMAND';
   } catch (error) {
-    throw new Error(`LLM request failed: ${error.message}`);
+    throw new Error(`Groq API request failed: ${error.message}`);
   }
 }
 
@@ -334,28 +258,30 @@ async interpretResult(userQuery, command, rawOutput) {
     return `I couldn't find any information about "${userQuery}". The command didn't return any data.`;
   }
 
-  const prompt = `The user asked: "${userQuery}"
+  const systemPrompt = `You are a helpful assistant that explains technical system information in simple, non-technical terms. Focus on answering the user's original question directly first, then provide additional relevant details if available. Keep responses concise but helpful.`;
+  
+  const userMessage = `The user asked: "${userQuery}"
 The following PowerShell command was executed:
 ${command}
 
 It produced this output:
 ${rawOutput}
 
-Please explain this technical system information in simple, non-technical terms that a regular user would understand. Focus on answering the user's original question directly first, then provide additional relevant details if available. Keep the response concise but helpful.`;
+Please explain this in simple terms.`;
 
   try {
-    const response = await axios.post(`${this.ollamaUrl}/api/generate`, {
+    const chatCompletion = await this.groq.chat.completions.create({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage }
+      ],
       model: this.model,
-      prompt: prompt,
-      stream: false,
-      options: {
-        temperature: 0.2,
-        max_tokens: 300 // Allow for more detailed explanations
-      }
+      temperature: 0.2,
+      max_tokens: 300
     });
     
+    let interpretation = chatCompletion.choices[0]?.message?.content?.trim() || 'Could not generate explanation';
     // Clean up the response
-    let interpretation = response.data.response.trim();
     interpretation = interpretation.replace(/^\s*"/, '').replace(/"\s*$/, ''); // Remove surrounding quotes if present
     return interpretation;
   } catch (error) {
