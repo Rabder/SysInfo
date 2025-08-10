@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>System Info Agent</title>
+    <title>System Info Widget</title>
     <style>
         * {
             margin: 0;
@@ -10,394 +10,405 @@
             box-sizing: border-box;
         }
 
-        :root {
-            --primary-color: #2563eb;
-            --primary-hover: #1d4ed8;
-            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --card-bg: rgba(255, 255, 255, 0.95);
-            --text-primary: #1f2937;
-            --text-secondary: #6b7280;
-            --border-color: #e5e7eb;
-            --success-color: #10b981;
-            --warning-color: #f59e0b;
-            --shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-        }
-        
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg-gradient);
-            min-height: 100vh;
-            padding: 20px;
-            line-height: 1.6;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: transparent;
+            padding: 12px;
+            overflow: hidden;
+            -webkit-user-select: none;
+            user-select: none;
         }
         
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: var(--card-bg);
-            border-radius: 24px;
-            padding: 40px;
-            box-shadow: var(--shadow-lg);
-            backdrop-filter: blur(10px);
+        .widget {
+            width: 396px;
+            height: 556px;
+            background: linear-gradient(145deg, 
+                rgba(255, 255, 255, 0.95) 0%, 
+                rgba(248, 250, 252, 0.95) 100%);
+            border-radius: 12px;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.1),
+                0 1px 2px rgba(0, 0, 0, 0.05),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        /* Window controls */
+        .title-bar {
+            height: 32px;
+            background: linear-gradient(180deg, 
+                rgba(255, 255, 255, 0.9) 0%, 
+                rgba(248, 250, 252, 0.8) 100%);
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+            -webkit-app-region: drag;
+        }
+        
+        .window-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            letter-spacing: 0.02em;
+        }
+        
+        .window-controls {
+            display: flex;
+            gap: 6px;
+            -webkit-app-region: no-drag;
+        }
+        
+        .control-btn {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        
+        .close { background: #ff5f56; }
+        .minimize { background: #ffbd2e; }
+        .maximize { background: #27ca3f; }
+        
+        .control-btn:hover {
+            transform: scale(1.1);
+            filter: brightness(1.1);
+        }
+        
+        /* Main content */
+        .content {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
         }
         
         .header {
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: 24px;
         }
         
         .header h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
+            gap: 6px;
         }
         
         .header .icon {
-            font-size: 2.5rem;
-            background: var(--bg-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            font-size: 16px;
         }
         
         .header p {
-            color: var(--text-secondary);
-            font-size: 1.1rem;
+            font-size: 11px;
+            color: #64748b;
             font-weight: 400;
         }
         
+        /* Search section */
         .search-section {
-            margin-bottom: 32px;
+            margin-bottom: 20px;
         }
         
         .search-container {
             position: relative;
-            display: flex;
-            gap: 12px;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
         
         .search-input {
-            flex: 1;
-            padding: 16px 20px;
-            border: 2px solid var(--border-color);
-            border-radius: 16px;
-            font-size: 16px;
-            font-weight: 500;
-            color: var(--text-primary);
-            background: white;
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #1e293b;
+            background: rgba(255, 255, 255, 0.9);
             transition: all 0.2s ease;
             outline: none;
         }
         
         .search-input:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+            background: white;
         }
         
         .search-input::placeholder {
-            color: var(--text-secondary);
-            font-weight: 400;
+            color: #94a3b8;
+            font-size: 12px;
         }
         
         .search-btn {
-            padding: 16px 24px;
-            background: var(--primary-color);
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(145deg, #3b82f6, #2563eb);
             color: white;
             border: none;
-            border-radius: 16px;
-            font-size: 16px;
+            border-radius: 8px;
+            font-size: 13px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
-            min-width: 100px;
+            margin-top: 8px;
+            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
         }
         
         .search-btn:hover:not(:disabled) {
-            background: var(--primary-hover);
+            background: linear-gradient(145deg, #2563eb, #1d4ed8);
             transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
         }
         
         .search-btn:disabled {
-            background: var(--text-secondary);
+            background: #94a3b8;
             cursor: not-allowed;
             transform: none;
+            box-shadow: none;
         }
         
-        .examples {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 16px;
+        /* Quick actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-bottom: 20px;
         }
         
-        .example-tag {
-            padding: 6px 12px;
-            background: rgba(37, 99, 235, 0.1);
-            color: var(--primary-color);
-            border-radius: 20px;
-            font-size: 14px;
+        .quick-btn {
+            padding: 8px 10px;
+            background: rgba(248, 250, 252, 0.8);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            border-radius: 6px;
+            font-size: 11px;
             font-weight: 500;
+            color: #475569;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.15s ease;
+            text-align: center;
         }
         
-        .example-tag:hover {
-            background: rgba(37, 99, 235, 0.2);
+        .quick-btn:hover {
+            background: rgba(241, 245, 249, 0.9);
+            border-color: #cbd5e1;
+            color: #334155;
             transform: translateY(-1px);
         }
         
-        .result-section {
-            margin-top: 32px;
+        /* Results */
+        .results {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 8px;
+            border: 1px solid rgba(226, 232, 240, 0.6);
+            padding: 16px;
+            overflow-y: auto;
+            max-height: 280px;
         }
         
-        .result-card {
-            background: white;
-            border-radius: 20px;
-            padding: 32px;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border-color);
-            min-height: 120px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .results::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .results::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .results::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.4);
+            border-radius: 2px;
         }
         
         .loading {
             display: flex;
             align-items: center;
-            gap: 12px;
-            color: var(--primary-color);
-            font-weight: 500;
+            justify-content: center;
+            gap: 8px;
+            color: #64748b;
+            font-size: 12px;
+            padding: 20px;
         }
         
-        .loading-spinner {
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(37, 99, 235, 0.2);
-            border-top: 2px solid var(--primary-color);
+        .loading-dot {
+            width: 4px;
+            height: 4px;
+            background: #64748b;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
+            animation: loading-bounce 1.4s ease-in-out infinite both;
         }
         
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .loading-dot:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dot:nth-child(2) { animation-delay: -0.16s; }
+        
+        @keyframes loading-bounce {
+            0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
         }
         
         .result-content {
-            width: 100%;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #1e293b;
         }
         
-        .answer {
-            font-size: 16px;
-            line-height: 1.7;
-            color: var(--text-primary);
-            margin-bottom: 24px;
-        }
-        
-        .answer h3 {
-            color: var(--primary-color);
-            font-size: 1.3rem;
+        .result-content strong {
+            color: #3b82f6;
             font-weight: 600;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
         }
         
-        .answer ul {
-            margin: 16px 0;
-            padding-left: 0;
+        .result-content ul {
             list-style: none;
-        }
-        
-        .answer li {
+            padding: 0;
             margin: 8px 0;
-            padding: 12px 16px;
-            background: rgba(37, 99, 235, 0.05);
-            border-radius: 12px;
-            border-left: 4px solid var(--primary-color);
         }
         
-        .answer table {
+        .result-content li {
+            margin: 4px 0;
+            padding: 6px 8px;
+            background: rgba(248, 250, 252, 0.8);
+            border-radius: 4px;
+            border-left: 2px solid #3b82f6;
+            font-size: 11px;
+        }
+        
+        .result-content table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin: 8px 0;
+            font-size: 11px;
         }
         
-        .answer table th,
-        .answer table td {
-            padding: 16px;
-            text-align: left;
-            border-bottom: 1px solid var(--border-color);
+        .result-content table td {
+            padding: 4px 6px;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.6);
         }
         
-        .answer table th {
-            background: rgba(37, 99, 235, 0.05);
-            font-weight: 600;
-            color: var(--primary-color);
+        .result-content table tr:hover {
+            background: rgba(248, 250, 252, 0.8);
         }
         
-        .answer table tr:hover {
-            background: rgba(37, 99, 235, 0.02);
-        }
-        
-        .answer strong {
-            font-weight: 600;
-            color: var(--primary-color);
-        }
-        
-        .answer pre {
-            background: #f8fafc;
-            padding: 20px;
-            border-radius: 12px;
+        .result-content pre {
+            background: rgba(248, 250, 252, 0.8);
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 10px;
             overflow-x: auto;
-            font-size: 14px;
-            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
-            border: 1px solid var(--border-color);
+            border: 1px solid rgba(226, 232, 240, 0.6);
         }
         
+        /* Details toggle */
         .details {
-            margin-top: 24px;
-            border-top: 1px solid var(--border-color);
-            padding-top: 24px;
+            margin-top: 12px;
+            border-top: 1px solid rgba(226, 232, 240, 0.6);
+            padding-top: 8px;
         }
         
         .details-toggle {
             background: none;
             border: none;
-            color: var(--text-secondary);
+            color: #64748b;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 10px;
             font-weight: 500;
-            padding: 8px 0;
+            padding: 4px 0;
             display: flex;
             align-items: center;
-            gap: 8px;
-            transition: color 0.2s ease;
+            gap: 4px;
         }
         
         .details-toggle:hover {
-            color: var(--primary-color);
-        }
-        
-        .details-toggle .arrow {
-            transition: transform 0.2s ease;
-        }
-        
-        .details-toggle.expanded .arrow {
-            transform: rotate(90deg);
+            color: #3b82f6;
         }
         
         .details-content {
             display: none;
-            margin-top: 16px;
-            padding: 20px;
-            background: #f8fafc;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
+            margin-top: 8px;
+            padding: 8px;
+            background: rgba(248, 250, 252, 0.6);
+            border-radius: 4px;
+            font-size: 10px;
+            border: 1px solid rgba(226, 232, 240, 0.4);
         }
         
         .details-content.show {
             display: block;
         }
         
-        .details-content strong {
-            color: var(--text-primary);
-            display: block;
-            margin-bottom: 8px;
-        }
-        
         .details-content div {
-            font-family: 'SF Mono', Monaco, monospace;
-            font-size: 13px;
-            color: var(--text-secondary);
-            background: white;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 12px;
+            font-family: 'Courier New', monospace;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 6px;
+            border-radius: 3px;
+            margin: 4px 0;
             word-break: break-all;
+            font-size: 9px;
+            color: #475569;
         }
         
         .status-message {
             text-align: center;
-            color: var(--text-secondary);
+            font-size: 12px;
+            color: #64748b;
+            padding: 20px;
             font-style: italic;
-            padding: 40px 20px;
         }
         
         .status-message.ready {
-            color: var(--success-color);
+            color: #059669;
         }
         
         .status-message.error {
-            color: var(--warning-color);
-        }
-        
-        /* Responsive design */
-        @media (max-width: 768px) {
-            .container {
-                margin: 10px;
-                padding: 24px;
-                border-radius: 20px;
-            }
-            
-            .header h1 {
-                font-size: 2rem;
-            }
-            
-            .search-container {
-                flex-direction: column;
-            }
-            
-            .search-btn {
-                width: 100%;
-            }
-            
-            .examples {
-                justify-content: center;
-            }
+            color: #dc2626;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1><span class="icon">🤖</span>System Info Agent</h1>
-            <p>Ask me anything about your computer's hardware, performance, and system status</p>
+    <div class="widget">
+        <div class="title-bar">
+            <div class="window-title">System Info</div>
+            <div class="window-controls">
+                <button class="control-btn close" onclick="window.close()"></button>
+                <button class="control-btn minimize" onclick="window.minimize()"></button>
+                <button class="control-btn maximize"></button>
+            </div>
         </div>
         
-        <div class="search-section">
-            <div class="search-container">
-                <input type="text" id="queryInput" class="search-input" 
-                       placeholder="Ask about your system... (e.g., How much RAM do I have?)" />
-                <button id="submitBtn" class="search-btn">Ask</button>
+        <div class="content">
+            <div class="header">
+                <h1><span class="icon">🖥️</span>System Monitor</h1>
+                <p>Ask me about your computer</p>
             </div>
             
-            <div class="examples">
-                <span class="example-tag" onclick="setQuery('how much RAM do I have?')">💾 RAM Usage</span>
-                <span class="example-tag" onclick="setQuery('what processes use most memory?')">⚡ Top Processes</span>
-                <span class="example-tag" onclick="setQuery('show me disk space')">💽 Disk Space</span>
-                <span class="example-tag" onclick="setQuery('what is my CPU usage?')">🔥 CPU Usage</span>
-                <span class="example-tag" onclick="setQuery('list running services')">⚙️ Services</span>
-                <span class="example-tag" onclick="setQuery('what GPU do I have?')">🎮 Graphics</span>
+            <div class="search-section">
+                <div class="search-container">
+                    <input type="text" id="queryInput" class="search-input" 
+                           placeholder="How much RAM do I have?" />
+                </div>
+                <button id="submitBtn" class="search-btn">Ask System</button>
             </div>
-        </div>
-        
-        <div class="result-section">
-            <div id="result" class="result-card">
-                <div class="status-message">Initializing AI system... Please wait.</div>
+            
+            <div class="quick-actions">
+                <button class="quick-btn" onclick="setQuery('RAM usage')">💾 Memory</button>
+                <button class="quick-btn" onclick="setQuery('CPU usage')">⚡ Processor</button>
+                <button class="quick-btn" onclick="setQuery('disk space')">💽 Storage</button>
+                <button class="quick-btn" onclick="setQuery('running processes')">📊 Processes</button>
+                <button class="quick-btn" onclick="setQuery('system services')">⚙️ Services</button>
+                <button class="quick-btn" onclick="setQuery('graphics card')">🎮 Graphics</button>
+            </div>
+            
+            <div id="result" class="results">
+                <div class="status-message">Starting up system monitor...</div>
             </div>
         </div>
     </div>
@@ -417,59 +428,54 @@
             if (!query) return;
 
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Thinking...';
-            result.innerHTML = '<div class="loading"><div class="loading-spinner"></div>Analyzing your system...</div>';
+            submitBtn.textContent = 'Checking...';
+            
+            result.innerHTML = `
+                <div class="loading">
+                    <div class="loading-dot"></div>
+                    <div class="loading-dot"></div>
+                    <div class="loading-dot"></div>
+                    <span>Analyzing system...</span>
+                </div>
+            `;
 
             try {
                 const response = await window.electronAPI.querySystem(query);
                 
-                let html = `<div class="result-content">`;
-                html += `<div class="answer">${response.interpretation}</div>`;
+                let html = `<div class="result-content">${response.interpretation}</div>`;
                 
                 if (response.command || response.rawOutput) {
                     html += `
                         <div class="details">
                             <button class="details-toggle" onclick="toggleDetails(this)">
-                                <span class="arrow">▶</span>
-                                <span>Technical Details</span>
+                                <span>▶</span>
+                                <span>Tech Details</span>
                             </button>
                             <div class="details-content">
-                                ${response.command ? `<strong>Command used:</strong><div>${response.command}</div>` : ''}
-                                ${response.rawOutput ? `<strong>Raw output:</strong><div>${response.rawOutput}</div>` : ''}
+                                ${response.command ? `<strong>Command:</strong><div>${response.command}</div>` : ''}
+                                ${response.rawOutput ? `<strong>Output:</strong><div>${response.rawOutput}</div>` : ''}
                             </div>
                         </div>
                     `;
                 }
                 
-                html += `</div>`;
                 result.innerHTML = html;
                 
             } catch (error) {
-                result.innerHTML = `<div class="result-content"><div class="answer" style="color: var(--warning-color);">❌ Error: ${error.message}</div></div>`;
+                result.innerHTML = `<div class="result-content" style="color: #dc2626;">❌ ${error.message}</div>`;
             }
 
             submitBtn.disabled = false;
-            submitBtn.textContent = 'Ask';
+            submitBtn.textContent = 'Ask System';
             queryInput.select();
         }
 
         function toggleDetails(button) {
             const content = button.nextElementSibling;
-            const isExpanded = content.classList.contains('show');
+            const arrow = button.querySelector('span:first-child');
             
             content.classList.toggle('show');
-            button.classList.toggle('expanded');
-            
-            const arrow = button.querySelector('.arrow');
-            const text = button.querySelector('span:last-child');
-            
-            if (isExpanded) {
-                arrow.textContent = '▶';
-                text.textContent = 'Technical Details';
-            } else {
-                arrow.textContent = '▼';
-                text.textContent = 'Hide Details';
-            }
+            arrow.textContent = content.classList.contains('show') ? '▼' : '▶';
         }
 
         submitBtn.addEventListener('click', handleQuery);
@@ -491,6 +497,30 @@
             else if (isError) className += ' error';
             
             result.innerHTML = `<div class="${className}">${status}</div>`;
+        });
+
+        // Make window draggable
+        let isDragging = false;
+        let dragOffset = { x: 0, y: 0 };
+
+        document.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.title-bar') && !e.target.closest('.window-controls')) {
+                isDragging = true;
+                dragOffset.x = e.clientX;
+                dragOffset.y = e.clientY;
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const deltaX = e.clientX - dragOffset.x;
+                const deltaY = e.clientY - dragOffset.y;
+                // Note: actual window dragging is handled by -webkit-app-region: drag
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
         });
     </script>
 </body>

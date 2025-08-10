@@ -36,8 +36,8 @@ async function initializeAgent() {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 500,
-    height: 400,
+    width: 420,
+    height: 580,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -45,7 +45,11 @@ function createWindow() {
     },
     resizable: false,
     maximizable: false,
-    show: false
+    show: false,
+    frame: false, // Remove window frame for widget-like appearance
+    transparent: true, // Allow transparency
+    alwaysOnTop: false,
+    skipTaskbar: false
   });
 
   mainWindow.loadFile('index.html');
