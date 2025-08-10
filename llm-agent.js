@@ -232,13 +232,18 @@ async queryLLM(userQuery, previousError = null, failedCommand = null) {
 
   async executeCommand(command) {
   try {
-    // Modify command to convert output to JSON for better parsing
-    const jsonCommand = `${command} | ConvertTo-Json -Depth 10`;
-    const result = execSync(`powershell -Command "${jsonCommand}"`, { 
+    // Properly escape the command for PowerShell execution
+    const escapedCommand = command.replace(/"/g, '""'); // Escape double quotes
+    const jsonCommand = `${escapedCommand} | ConvertTo-Json -Depth 10`;
+    
+    // Use -EncodedCommand to avoid quote parsing issues
+    const encodedCommand = Buffer.from(jsonCommand, 'utf16le').toString('base64');
+    
+    const result = execSync(`powershell -EncodedCommand ${encodedCommand}`, { 
       encoding: 'utf8', 
-      timeout: 30000, // Increased timeout to 30 seconds
-      maxBuffer: 1024 * 1024 * 10, // Increased buffer to 10MB
-      windowsHide: true // Hide PowerShell window on Windows
+      timeout: 30000,
+      maxBuffer: 1024 * 1024 * 10,
+      windowsHide: true
     });
     
     try {
@@ -250,9 +255,10 @@ async queryLLM(userQuery, previousError = null, failedCommand = null) {
       return result.trim();
     }
   } catch (error) {
-    // If JSON conversion fails, try the raw command
+    // If encoded command fails, try simple approach with single quotes
     try {
-      const rawResult = execSync(`powershell -Command "${command}"`, { 
+      const simpleCommand = command.replace(/"/g, "'"); // Replace double quotes with single quotes
+      const rawResult = execSync(`powershell -Command "${simpleCommand}"`, { 
         encoding: 'utf8', 
         timeout: 30000,
         maxBuffer: 1024 * 1024 * 10,

@@ -9,13 +9,13 @@ User: "how many cores do I have?"
 Response: Get-WmiObject -Class Win32_Processor | Select-Object NumberOfCores
 
 User: "what processes are using the most RAM?" or "what processes use most memory?"
-Response: Get-Process | Sort-Object WorkingSet -Descending | Select-Object -First 10 Name, @{Name="RAM_MB";Expression={[math]::Round($_.WorkingSet/1MB,2)}}
+Response: Get-Process | Sort-Object WorkingSet -Descending | Select-Object -First 10 Name, WorkingSet
 
 User: "how much RAM do I have?" or "total memory?"
-Response: Get-WmiObject -Class Win32_ComputerSystem | Select-Object @{Name="RAM_GB";Expression={[math]::Round($_.TotalPhysicalMemory/1GB,2)}}
+Response: Get-WmiObject -Class Win32_ComputerSystem | Select-Object TotalPhysicalMemory
 
 User: "what's my CPU usage?" or "current CPU usage?"
-Response: Get-WmiObject -Class Win32_Processor | Select-Object @{Name="CPU_Usage";Expression={$_.LoadPercentage}}
+Response: Get-WmiObject -Class Win32_Processor | Select-Object LoadPercentage
 
 User: "list running services" or "show services"
 Response: Get-Service | Where-Object {$_.Status -eq "Running"} | Select-Object Name, Status
@@ -24,7 +24,7 @@ User: "what GPU do I have?"
 Response: Get-WmiObject Win32_VideoController | Select-Object Name, DriverVersion
 
 User: "disk space" or "free space"
-Response: Get-WmiObject -Class Win32_LogicalDisk | Select-Object DeviceID, @{Name="Size_GB";Expression={[math]::Round($_.Size/1GB,2)}}, @{Name="Free_GB";Expression={[math]::Round($_.FreeSpace/1GB,2)}}
+Response: Get-WmiObject -Class Win32_LogicalDisk | Select-Object DeviceID, Size, FreeSpace
 
 If unsure or unsupported, reply with: NO_COMMAND
 
