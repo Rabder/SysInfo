@@ -236,8 +236,9 @@ async queryLLM(userQuery, previousError = null, failedCommand = null) {
     const jsonCommand = `${command} | ConvertTo-Json -Depth 10`;
     const result = execSync(`powershell -Command "${jsonCommand}"`, { 
       encoding: 'utf8', 
-      timeout: 10000,
-      maxBuffer: 1024 * 1024 * 5 // 5MB buffer
+      timeout: 30000, // Increased timeout to 30 seconds
+      maxBuffer: 1024 * 1024 * 10, // Increased buffer to 10MB
+      windowsHide: true // Hide PowerShell window on Windows
     });
     
     try {
@@ -249,7 +250,18 @@ async queryLLM(userQuery, previousError = null, failedCommand = null) {
       return result.trim();
     }
   } catch (error) {
-    throw new Error(`Command execution failed: ${error.message}`);
+    // If JSON conversion fails, try the raw command
+    try {
+      const rawResult = execSync(`powershell -Command "${command}"`, { 
+        encoding: 'utf8', 
+        timeout: 30000,
+        maxBuffer: 1024 * 1024 * 10,
+        windowsHide: true
+      });
+      return rawResult.trim();
+    } catch (rawError) {
+      throw new Error(`Command execution failed: ${error.message}`);
+    }
   }
 }
 
@@ -302,11 +314,15 @@ async processQuery(userQuery, maxRetries = 2) {
     }
   }
 
-  // First try advanced methods if they match the query
+  // Only use advanced methods for static system info queries, not usage/process queries
   const queryLower = userQuery.toLowerCase();
-  const advancedMatch = Object.keys(this.advancedMethods).find(key => 
-    queryLower.includes(key)
-  );
+  const isUsageQuery = queryLower.includes('usage') || queryLower.includes('using') || 
+                      queryLower.includes('processes') || queryLower.includes('running') ||
+                      queryLower.includes('services') || queryLower.includes('current');
+  
+  const advancedMatch = !isUsageQuery ? Object.keys(this.advancedMethods).find(key => 
+    queryLower.includes(key) && !queryLower.includes('usage')
+  ) : null;
   
   if (advancedMatch) {
     try {
