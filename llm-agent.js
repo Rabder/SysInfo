@@ -276,7 +276,20 @@ async interpretResult(userQuery, command, rawOutput) {
     return `I couldn't find any information about "${userQuery}". The command didn't return any data.`;
   }
 
-  const systemPrompt = `You are a helpful assistant that explains technical system information in simple, non-technical terms. Focus on answering the user's original question directly first, then provide additional relevant details if available. Keep responses concise but helpful.`;
+  const systemPrompt = `You are a helpful assistant that explains technical system information in simple, non-technical terms. 
+
+IMPORTANT FORMATTING RULES:
+- Use HTML formatting for better readability
+- For lists of items (processes, services, drives): Use <ul><li> bullet points
+- For tabular data: Use simple HTML tables with <table><tr><td>
+- For single values: Use <strong> for emphasis
+- Convert large numbers to human-readable formats (bytes to GB, etc.)
+- Keep explanations clear and concise
+
+Examples of good formatting:
+- Process list: <ul><li><strong>chrome.exe</strong> - 512 MB</li><li><strong>firefox.exe</strong> - 256 MB</li></ul>
+- System info: <strong>Total RAM:</strong> 16 GB<br><strong>Available:</strong> 8 GB
+- Table format: <table><tr><td><strong>Drive</strong></td><td><strong>Size</strong></td></tr><tr><td>C:</td><td>500 GB</td></tr></table>`;
   
   const userMessage = `The user asked: "${userQuery}"
 The following PowerShell command was executed:
@@ -285,7 +298,7 @@ ${command}
 It produced this output:
 ${rawOutput}
 
-Please explain this in simple terms.`;
+Please explain this in simple terms using proper HTML formatting for readability.`;
 
   try {
     const chatCompletion = await this.groq.chat.completions.create({
@@ -295,7 +308,7 @@ Please explain this in simple terms.`;
       ],
       model: this.model,
       temperature: 0.2,
-      max_tokens: 300
+      max_tokens: 500 // Increased for formatted output
     });
     
     let interpretation = chatCompletion.choices[0]?.message?.content?.trim() || 'Could not generate explanation';
@@ -304,9 +317,62 @@ Please explain this in simple terms.`;
     return interpretation;
   } catch (error) {
     console.error('Interpretation failed:', error);
-    // Provide a fallback interpretation
-    return `Here's the technical information about your system:\n${rawOutput}\n\nI couldn't generate a simplified explanation.`;
+    // Provide a fallback interpretation with basic formatting
+    return this.formatFallbackOutput(userQuery, rawOutput);
   }
+}
+
+formatFallbackOutput(userQuery, rawOutput) {
+  try {
+    const data = JSON.parse(rawOutput);
+    
+    // Handle different data types
+    if (Array.isArray(data)) {
+      // List of items - format as bullet points
+      const items = data.slice(0, 10).map(item => {
+        if (typeof item === 'object') {
+          const keys = Object.keys(item);
+          const mainField = keys.find(k => ['Name', 'ProcessName', 'DeviceID'].includes(k)) || keys[0];
+          const valueField = keys.find(k => ['WorkingSet', 'Size', 'FreeSpace'].includes(k));
+          const name = item[mainField];
+          const value = valueField ? this.formatBytes(item[valueField]) : '';
+          return `<li><strong>${name}</strong>${value ? ` - ${value}` : ''}</li>`;
+        }
+        return `<li>${item}</li>`;
+      }).join('');
+      return `<strong>Results for "${userQuery}":</strong><ul>${items}</ul>`;
+    } else if (typeof data === 'object') {
+      // Single object - format as key-value pairs
+      const pairs = Object.entries(data).map(([key, value]) => {
+        const formattedValue = this.formatValue(key, value);
+        return `<strong>${key}:</strong> ${formattedValue}`;
+      }).join('<br>');
+      return pairs;
+    }
+  } catch (e) {
+    // Raw text output
+    return `<strong>System Information:</strong><br><pre>${rawOutput}</pre>`;
+  }
+  
+  return rawOutput;
+}
+
+formatBytes(bytes) {
+  if (!bytes || isNaN(bytes)) return bytes;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+formatValue(key, value) {
+  if (key.toLowerCase().includes('memory') || key.toLowerCase().includes('size') || 
+      key.toLowerCase().includes('space') || key === 'WorkingSet' || key === 'TotalPhysicalMemory') {
+    return this.formatBytes(value);
+  }
+  if (key.toLowerCase().includes('percentage') || key.toLowerCase().includes('usage')) {
+    return value + '%';
+  }
+  return value;
 }
 async processQuery(userQuery, maxRetries = 2) {
   if (!this.isInitialized) {
